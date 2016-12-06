@@ -7,6 +7,7 @@ request = require "request"
 pushEP = "https://api.line.me/v2/bot/message/push"
 replyEP = "https://api.line.me/v2/bot/message/reply"
 getContentEP = "https://api.line.me/v2/bot/message/%s/content"
+getProfileEP = "https://api.line.me/v2/bot/profile/%s"
 
 class LineMessageApiAdapter extends Adapter
     data: {}
@@ -29,19 +30,17 @@ class LineMessageApiAdapter extends Adapter
                         from = source.groupId
                     when "room"
                         from = source.roomId
-                console.log "from: #{source.type} => #{from}"
+
+                user = LineUser.init(@robot, from, replyToken)
+                console.log "from: #{source.type} => #{from}"                
                 if event.type == "message"
                     switch message.type
                         when "text"
                             text = message.text ? ""
                             console.log "text: #{text}"
-                            user = @robot.brain.userForId from
-                            user.replyToken = replyToken
                             @receive new TextMessage(user, text, message.id)
                         when "image"
                             text = ""
-                            user = @robot.brain.userForId from
-                            user.replyToken = replyToken
                             @receive new ImageMessage(user, text, message.id)
                         else
                             # TODO: text, image以外の処理
@@ -50,14 +49,10 @@ class LineMessageApiAdapter extends Adapter
                     console.log "postback.data: #{postback.data}"
                     text = ""
                     messageId = 0
-                    user = @robot.brain.userForId from
-                    user.replyToken = replyToken
                     @receive new PostbackMessage(user, text, messageId, postback.data)
                 else if event.type == "follow"
                     console.log "follow"
                     console.log(event)
-                    user = @robot.brain.userForId from
-                    user.replyToken = replyToken
                     @receive new FollowMessage(user)
             @emit "connected"
 
@@ -208,6 +203,37 @@ class LineMessageApiAdapter extends Adapter
                     type: "confirm"
                     text: content.text
                     actions: content.actions
+
+class LineUser
+    @init: (robot, from, replyToken) ->
+        user = robot.brain.userForId from
+        user.replyToken = replyToken
+        user.getProfile = (callback) ->
+            @channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN ? ""
+            url = getProfileEP.replace('%s', from)
+            console.log("url:#{url}")
+            request
+                url: url
+                headers:
+                    "Content-Type": "application/json"
+                    "Authorization": "Bearer #{@channelAccessToken}"
+                method: "GET"
+                proxy: process.env.FIXIE_URL ? ""
+                encoding: 'utf-8'
+                (err, response, body) ->
+                    throw err if err
+                    if response.statusCode is 200
+                      console.log "GetProfile success"
+                      body = JSON.parse(body)
+                      user.name = body.displayName
+                      user.displayName = body.displayName
+                      user.pictureUrl = body.pictureUrl
+                      user.statusMessage = body.statusMessage
+                      callback(user, body)
+                    else
+                      console.log "response error: #{response.statusCode}"
+                      console.log body
+        return user
 
 class PostbackMessage extends TextMessage
     constructor: (@user, @text, @id, @data) ->
