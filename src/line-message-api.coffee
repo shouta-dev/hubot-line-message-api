@@ -53,6 +53,12 @@ class LineMessageApiAdapter extends Adapter
                     user = @robot.brain.userForId from
                     user.replyToken = replyToken
                     @receive new PostbackMessage(user, text, messageId, postback.data)
+                else if event.type == "follow"
+                    console.log "follow"
+                    console.log(event)
+                    user = @robot.brain.userForId from
+                    user.replyToken = replyToken
+                    @receive new FollowMessage(user)
             @emit "connected"
 
     send: (envelope, strings...) ->
@@ -207,6 +213,10 @@ class PostbackMessage extends TextMessage
     constructor: (@user, @text, @id, @data) ->
         super @user, @text, @id
 
+class FollowMessage extends TextMessage
+    constructor: (@user) ->
+        super @user, "", 0
+
 class ContentMessage extends TextMessage
     getContent: (callback) ->
         messageId = this.id
@@ -235,3 +245,4 @@ exports.use = (robot) ->
     new LineMessageApiAdapter(robot)
 exports.ImageMessage = ImageMessage
 exports.PostbackMessage = PostbackMessage
+exports.FollowMessage = FollowMessage
