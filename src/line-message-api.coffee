@@ -57,33 +57,14 @@ class LineMessageApiAdapter extends Adapter
             @emit "connected"
 
     send: (envelope, strings...) ->
-        headers =
-            "Content-Type": "application/json"
-            "Authorization": "Bearer #{@channelAccessToken}"
-        to = envelope.user.id
-        data =
-            to: to
-            messages: []
-        for string in strings.slice(0,5)
-            data.messages = data.messages.concat
-                type: "text"
-                text: string.text
-        options =
-            url: pushEP
-            headers: headers
-            method: "POST"
-            proxy: process.env.FIXIE_URL ? ""
-            body: JSON.stringify(data)
-        request options, (err, response, body) ->
-            throw err if err
-            if response.statusCode is 200
-              console.log "success"
-              console.log body
-            else
-              console.log "response error: #{response.statusCode}"
-              console.log body
+        @_updateDataForPush(envelope)
+        this._postToLine(pushEP, envelope, strings...)
+
     reply: (envelope, strings...) ->
         @_updateDataForReply(envelope)
+        this._postToLine(replyEP, envelope, strings...)
+
+    _postToLine: (url, envelope, strings...) ->
         for string in strings
             switch string.type
                 when "text"
@@ -107,7 +88,7 @@ class LineMessageApiAdapter extends Adapter
                     process.exit 1
         console.log @data
         request
-            url: replyEP
+            url: url
             headers:
                 "Content-Type": "application/json"
                 "Authorization": "Bearer #{@channelAccessToken}"
@@ -127,6 +108,12 @@ class LineMessageApiAdapter extends Adapter
         replyToken = envelope.user.replyToken
         @data =
             replyToken: replyToken
+            messages: []
+
+    _updateDataForPush: (envelope) ->
+        to = envelope.user.id
+        @data =
+            to: to
             messages: []
 
     updateDataForReplyText: (string, data) ->
