@@ -214,7 +214,7 @@ class LineUser
                       body = JSON.parse(body)
                       user.name = body.displayName
                       user.displayName = body.displayName
-                      user.pictureUrl = body.pictureUrl
+                      user.pictureUrl = body.pictureUrl.replace(/^http/i, 'https')
                       user.statusMessage = body.statusMessage
                       callback(user, body)
                     else
