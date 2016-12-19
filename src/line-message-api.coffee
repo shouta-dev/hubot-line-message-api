@@ -42,6 +42,9 @@ class LineMessageApiAdapter extends Adapter
                         when "image"
                             text = ""
                             @receive new ImageMessage(user, text, message.id)
+                        when "sticker"
+                            text = ""
+                            @receive new StickerMessage(user, text, message.id)
                         else
                             # TODO: text, image以外の処理
                             console.log "This message type is not supported.(#{message.type})"
@@ -112,6 +115,8 @@ class LineMessageApiAdapter extends Adapter
 
     _updateDataForPush: (envelope) ->
         to = envelope.user.id
+        to = envelope.user.pushId if envelope.user.pushId?
+
         @data =
             to: to
             messages: []
@@ -214,7 +219,8 @@ class LineUser
                       body = JSON.parse(body)
                       user.name = body.displayName
                       user.displayName = body.displayName
-                      user.pictureUrl = body.pictureUrl.replace(/^http/i, 'https')
+                      if body.pictureUrl?
+                        user.pictureUrl = body.pictureUrl.replace(/^http/i, 'https')
                       user.statusMessage = body.statusMessage
                       callback(user, body)
                     else
@@ -227,6 +233,10 @@ class PostbackMessage extends TextMessage
         super @user, @text, @id
 
 class FollowMessage extends TextMessage
+    constructor: (@user) ->
+        super @user, "", 0
+
+class StickerMessage extends TextMessage
     constructor: (@user) ->
         super @user, "", 0
 
@@ -259,3 +269,4 @@ exports.use = (robot) ->
 exports.ImageMessage = ImageMessage
 exports.PostbackMessage = PostbackMessage
 exports.FollowMessage = FollowMessage
+exports.StickerMessage = StickerMessage
