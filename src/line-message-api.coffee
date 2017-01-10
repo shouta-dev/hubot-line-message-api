@@ -114,8 +114,10 @@ class LineMessageApiAdapter extends Adapter
             messages: []
 
     _updateDataForPush: (envelope) ->
+        console.log("envelope")
+        console.log(envelope)
         to = envelope.user.id
-        to = envelope.user.pushId if envelope.user.pushId?
+        #to = envelope.user.pushId if envelope.user.pushId?
 
         @data =
             to: to
