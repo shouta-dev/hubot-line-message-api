@@ -4,6 +4,8 @@ catch
     prequire = require "parent-require"
     {Robot,Adapter,TextMessage,User} = prequire "hubot"
 request = require "request"
+crypto = require 'crypto'
+
 pushEP = "https://api.line.me/v2/bot/message/push"
 replyEP = "https://api.line.me/v2/bot/message/reply"
 getContentEP = "https://api.line.me/v2/bot/message/%s/content"
@@ -19,45 +21,57 @@ class LineMessageApiAdapter extends Adapter
             process.exit 1
         @robot.router.post @endpoint, (req, res) =>
             console.log "callback body: #{JSON.stringify(req.body)}"
-            # TODO: validate signeture
-            events = req.body.events
-            for event in events
-                {replyToken, type, source, message, postback} = event
-                switch source.type
-                    when "user"
-                        from = source.userId
-                    when "group"
-                        from = source.groupId
-                    when "room"
-                        from = source.roomId
 
-                user = LineUser.init(@robot, from, replyToken)
-                console.log "from: #{source.type} => #{from}"                
-                if event.type == "message"
-                    switch message.type
-                        when "text"
-                            text = message.text ? ""
-                            console.log "text: #{text}"
-                            @receive new TextMessage(user, text, message.id)
-                        when "image"
-                            text = ""
-                            @receive new ImageMessage(user, text, message.id)
-                        when "sticker"
-                            text = ""
-                            @receive new StickerMessage(user, text, message.id)
-                        else
-                            # TODO: text, image以外の処理
-                            console.log "This message type is not supported.(#{message.type})"
-                else if event.type == "postback"
-                    console.log "postback.data: #{postback.data}"
-                    text = ""
-                    messageId = 0
-                    @receive new PostbackMessage(user, text, messageId, postback.data)
-                else if event.type == "follow"
-                    console.log "follow"
-                    console.log(event)
-                    @receive new FollowMessage(user)
-            @emit "connected"
+            # validate signeture
+            if this.validateSignature(req.get('x-line-signature'), req.body)
+                console.log("SIGNATURE OK!!")
+                events = req.body.events
+                for event in events
+                    {replyToken, type, source, message, postback} = event
+                    switch source.type
+                        when "user"
+                            from = source.userId
+                        when "group"
+                            from = source.groupId
+                        when "room"
+                            from = source.roomId
+
+                    user = LineUser.init(@robot, from, replyToken)
+                    console.log "from: #{source.type} => #{from}"                
+                    if event.type == "message"
+                        switch message.type
+                            when "text"
+                                text = message.text ? ""
+                                console.log "text: #{text}"
+                                @receive new TextMessage(user, text, message.id)
+                            when "image"
+                                text = ""
+                                @receive new ImageMessage(user, text, message.id)
+                            when "sticker"
+                                text = ""
+                                @receive new StickerMessage(user, text, message.id)
+                            else
+                                # TODO: text, image以外の処理
+                                console.log "This message type is not supported.(#{message.type})"
+                    else if event.type == "postback"
+                        console.log "postback.data: #{postback.data}"
+                        text = ""
+                        messageId = 0
+                        @receive new PostbackMessage(user, text, messageId, postback.data)
+                    else if event.type == "follow"
+                        console.log "follow"
+                        console.log(event)
+                        @receive new FollowMessage(user)
+                @emit "connected"
+            else
+                console.log("SIGNATURE NG!")
+
+    validateSignature: (signature, body) ->
+        LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET
+        generated_signature = crypto.createHmac('sha256', LINE_CHANNEL_SECRET).update(new Buffer(JSON.stringify(body), 'utf8')).digest('base64')
+        console.log("receive signature: #{signature}")
+        console.log("generated signature: #{generated_signature}")
+        return signature == generated_signature
 
     send: (envelope, strings...) ->
         @_updateDataForPush(envelope)

@@ -1,6 +1,6 @@
 {
   "name": "hubot-line-message-api",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
   "main": "src/line-message-api.coffee",
   "scripts": {
