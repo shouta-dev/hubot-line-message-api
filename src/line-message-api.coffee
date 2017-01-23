@@ -62,9 +62,10 @@ class LineMessageApiAdapter extends Adapter
                         console.log "follow"
                         console.log(event)
                         @receive new FollowMessage(user)
-                @emit "connected"
             else
                 console.log("SIGNATURE NG!")
+            @emit "connected"
+            res.send 'OK'
 
     validateSignature: (signature, body) ->
         LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET
